@@ -35,10 +35,6 @@
                 <h3>展品介绍</h3>
                 <p id="exhibitDescription">请扫描展品二维码加载内容...</p>
             </div>
-            <div class="nav-buttons">
-                <button class="control-btn" onclick="previousExhibit()">上一个</button>
-                <button class="control-btn" onclick="nextExhibit()">下一个</button>
-            </div>
         </div>
     </div>
 
@@ -72,15 +68,6 @@
         function toggleSpeed() { 
             const audio = document.getElementById('audioPlayer');
             audio.playbackRate = audio.playbackRate === 1.0 ? 1.5 : 1.0; 
-        }
-        function previousExhibit() { navigateExhibit('prev'); }
-        function nextExhibit() { navigateExhibit('next'); }
-        function navigateExhibit(direction) {
-            const ids = Object.keys(exhibits);
-            const currentIndex = ids.indexOf(currentExhibitId);
-            const newIndex = direction === 'next' ? (currentIndex + 1) % ids.length : (currentIndex - 1 + ids.length) % ids.length;
-            loadExhibit(ids[newIndex]);
-            window.history.replaceState({}, '', `?exhibit=${ids[newIndex]}`);
         }
     </script>
 </body>
