@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>展品语音导览</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Microsoft YaHei', sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(90deg, #2c3e50, #3498db);
+            color: white;
+            padding: 25px 20px;
+            text-align: center;
+        }
+        
+        .exhibit-title {
+            font-size: 1.5rem;
+            margin-bottom: 5px;
+        }
+        
+        .exhibit-subtitle {
+            opacity: 0.9;
+            font-size: 0.9rem;
+        }
+        
+        .content {
+            padding: 20px;
+        }
+        
+        .exhibit-image {
+            width: 100%;
+            max-width: 300px;
+            border-radius: 10px;
+            margin: 15px auto;
+            display: block;
+        }
+        
+        .audio-player {
+            width: 100%;
+            margin: 15px 0;
+        }
+        
+        .description {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            line-height: 1.5;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 15px 0;
+        }
+        
+        .control-btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .nav-buttons {
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .nav-btn {
+            background: #2c3e50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 class="exhibit-title" id="exhibitTitle">展品语音导览</h1>
+            <p class="exhibit-subtitle">扫描展品二维码开始收听</p>
+        </div>
+        
+        <div class="content">
+            <div id="loading" class="loading">
+                加载中...
+            </div>
+            
+            <div id="content" style="display: none;">
+                <img class="exhibit-image" id="exhibitImage" alt="展品图片">
+                
+                <audio class="audio-player" id="audioPlayer" controls>
+                    您的浏览器不支持音频播放
+                </audio>
+                
+                <div class="controls">
+                    <button class="control-btn" onclick="restartAudio()">重新播放</button>
+                    <button class="control-btn" onclick="toggleSpeed()">倍速播放</button>
+                </div>
+                
+                <div class="description">
+                    <h3>展品介绍</h3>
+                    <p id="exhibitDescription"></p>
+                </div>
+                
+                <div class="nav-buttons">
+                    <button class="nav-btn" id="prevBtn" onclick="previousExhibit()">上一个</button>
+                    <button class="nav-btn" id="nextBtn" onclick="nextExhibit()">下一个</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 展品数据 - 直接嵌入在HTML中
+        const exhibits = {
+            'exhibit_001': {
+                title: '青花瓷瓶',
+                subtitle: '明代景德镇官窑',
+                audio: 'audio/exhibit_001.mp3',
+                image: 'images/exhibit_001.jpg',
+                description: '此青花瓷瓶为明代景德镇官窑烧制，高45厘米，口径12厘米。瓶身绘有缠枝莲纹，釉色青翠欲滴，是明代青花瓷的典型代表作品。'
+            },
+            'exhibit_002': {
+                title: '青铜鼎',
+                subtitle: '商周时期礼器', 
+                audio: 'audio/exhibit_002.mp3',
+                image: 'images/exhibit_002.jpg',
+                description: '这件青铜鼎出土于河南安阳，为商周时期重要礼器。鼎身饰有饕餮纹，三足鼎立，体现了古代青铜铸造工艺的高超水平。'
+            },
+            'exhibit_003': {
+                title: '山水画轴',
+                subtitle: '清代文人画作',
+                audio: 'audio/exhibit_003.mp3', 
+                image: 'images/exhibit_003.jpg',
+                description: '这幅山水画轴为清代著名画家所作，采用水墨技法，画面层次丰富，意境深远，展现了传统中国山水画的独特魅力。'
+            }
+        };
+
+        let currentExhibitId = null;
+        let playbackSpeed = 1.0;
+
+        // 页面加载时初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const exhibitId = urlParams.get('exhibit') || 'exhibit_001';
+            
+            loadExhibit(exhibitId);
+        });
+
+        function loadExhibit(exhibitId) {
+            const exhibit = exhibits[exhibitId];
+            if (!exhibit) {
+                document.getElementById('loading').innerHTML = '未找到该展品信息';
+                return;
+            }
+
+            currentExhibitId = exhibitId;
+
+            // 更新页面内容
+            document.getElementById('exhibitTitle').textContent = exhibit.title;
+            document.getElementById('exhibitSubtitle').textContent = exhibit.subtitle;
+            document.getElementById('exhibitDescription').textContent = exhibit.description;
+
+            // 设置图片
+            const img = document.getElementById('exhibitImage');
+            if (exhibit.image) {
+                img.src = exhibit.image;
+                img.alt = exhibit.title;
+            }
+
+            // 设置音频
+            const audio = document.getElementById('audioPlayer');
+            audio.src = exhibit.audio;
+            
+            // 显示内容
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('content').style.display = 'block';
+
+            // 更新URL
+            const newUrl = window.location.pathname + '?exhibit=' + exhibitId;
+            window.history.replaceState({}, '', newUrl);
+        }
+
+        function restartAudio() {
+            const audio = document.getElementById('audioPlayer');
+            audio.currentTime = 0;
+            audio.play();
+        }
+
+        function toggleSpeed() {
+            const audio = document.getElementById('audioPlayer');
+            playbackSpeed = playbackSpeed === 1.0 ? 1.5 : playbackSpeed === 1.5 ? 2.0 : 1.0;
+            audio.playbackRate = playbackSpeed;
+        }
+
+        function previousExhibit() {
+            const ids = Object.keys(exhibits);
+            const currentIndex = ids.indexOf(currentExhibitId);
+            const newIndex = (currentIndex - 1 + ids.length) % ids.length;
+            loadExhibit(ids[newIndex]);
+        }
+
+        function nextExhibit() {
+            const ids = Object.keys(exhibits);
+            const currentIndex = ids.indexOf(currentExhibitId);
+            const newIndex = (currentIndex + 1) % ids.length;
+            loadExhibit(ids[newIndex]);
+        }
+    </script>
+</body>
+</html>
